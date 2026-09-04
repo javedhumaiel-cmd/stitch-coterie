@@ -24,7 +24,7 @@
   --shadow-sm:0 1px 2px rgba(32,36,42,.06);
   --shadow:0 2px 6px rgba(32,36,42,.07),0 22px 46px -26px rgba(32,36,42,.36);
   --shadow-img:0 26px 60px -32px rgba(32,36,42,.5);
-  --maxw:1260px;--gut:clamp(20px,5vw,66px);
+  --maxw:1260px;--gut:clamp(20px,5vw,66px);--palette-h:46px;
   --disp:"Bahnschrift","DIN Alternate","Segoe UI",system-ui,sans-serif;
   --body:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
 }
@@ -72,8 +72,20 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .btn-onvid{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
 .btn-onvid:hover{background:#fff;color:var(--dark);border-color:#fff}
 
+/* ============ PALETTE BAR ============ */
+.palette-bar{position:sticky;top:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--line)}
+.palette-inner{max-width:var(--maxw);margin:0 auto;padding-inline:var(--gut);height:var(--palette-h);display:flex;align-items:center;gap:16px;overflow-x:auto;scrollbar-width:none}
+.palette-inner::-webkit-scrollbar{display:none}
+.palette-label{font-family:var(--disp);font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--slate);white-space:nowrap;flex:none}
+.swatches{display:flex;gap:11px;align-items:center;flex:none}
+.swatch{width:22px;height:22px;border-radius:50%;border:1px solid rgba(120,110,90,.28);cursor:pointer;padding:0;flex:none;
+  background:linear-gradient(135deg,var(--sw-a) 0 50%,var(--sw-g) 50% 100%);transition:transform .16s cubic-bezier(.16,1,.3,1),box-shadow .16s}
+.swatch:hover{transform:scale(1.16)}
+.swatch:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.swatch.active{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--ink)}
+
 /* ============ NAV ============ */
-header.nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 84%,transparent);
+header.nav{position:sticky;top:var(--palette-h);z-index:50;background:color-mix(in srgb,var(--paper) 84%,transparent);
   backdrop-filter:saturate(150%) blur(12px);-webkit-backdrop-filter:saturate(150%) blur(12px);border-bottom:1px solid var(--line)}
 .nav-inner{display:flex;align-items:center;gap:24px;height:70px;max-width:var(--maxw);margin:0 auto;padding-inline:var(--gut)}
 .brand{display:flex;align-items:center;gap:12px}
@@ -246,6 +258,14 @@ footer{background:var(--dark);color:var(--dark-ink);padding:60px 0 30px}
 }
 </style>
 <script>document.documentElement.classList.add('js')</script>
+
+<!-- ============ PALETTE BAR ============ -->
+<div class="palette-bar">
+  <div class="palette-inner">
+    <span class="palette-label">Colour Theme</span>
+    <div class="swatches" id="swatches" role="group" aria-label="Choose a colour theme"></div>
+  </div>
+</div>
 
 <!-- ============ NAV ============ -->
 <header class="nav">
@@ -509,11 +529,47 @@ footer{background:var(--dark);color:var(--dark-ink);padding:60px 0 30px}
 
 <script>
 document.getElementById('yr').textContent=new Date().getFullYear();
-(function(){var root=document.documentElement,btn=document.getElementById('theme');
-  try{var s=localStorage.getItem('sc-theme');if(s)root.setAttribute('data-theme',s);}catch(e){}
-  btn.addEventListener('click',function(){var cur=root.getAttribute('data-theme');
+/* palette + light/dark theming */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('theme'), host=document.getElementById('swatches');
+  var PAL=[
+    {id:'emerald', name:'Emerald & Gold',      L:{a:'#2E5B4F',d:'#21463C',g:'#A9863F',gl:'#E4C079'}, D:{a:'#5FA48F',d:'#77B6A1',g:'#C6A15A',gl:'#E4C079'}},
+    {id:'bordeaux',name:'Bordeaux & Gold',     L:{a:'#7C2E38',d:'#5E222A',g:'#A9863F',gl:'#E4C079'}, D:{a:'#C4707A',d:'#D28992',g:'#C6A15A',gl:'#E7C87F'}},
+    {id:'navy',    name:'Navy & Champagne',    L:{a:'#223B60',d:'#182B48',g:'#9F8C57',gl:'#E7D7A2'}, D:{a:'#7699C9',d:'#8FACD6',g:'#C6B27C',gl:'#E7D7A2'}},
+    {id:'graphite',name:'Graphite & Brass',    L:{a:'#3C424A',d:'#2C3138',g:'#A9863F',gl:'#E4C079'}, D:{a:'#AEB6BF',d:'#C3C9CF',g:'#C6A15A',gl:'#E4C079'}},
+    {id:'aubergine',name:'Aubergine & Rose Gold',L:{a:'#5A2B4D',d:'#43203A',g:'#B27F72',gl:'#E7BCA9'}, D:{a:'#B87DA8',d:'#C795B7',g:'#D3A08F',gl:'#E7BCA9'}},
+    {id:'hunter',  name:'Hunter & Antique Gold',L:{a:'#24463A',d:'#183329',g:'#997A38',gl:'#DCBE7C'}, D:{a:'#57997E',d:'#6FAF94',g:'#BE9A54',gl:'#DCBE7C'}},
+    {id:'espresso',name:'Espresso & Gold',     L:{a:'#4A362A',d:'#362720',g:'#A9863F',gl:'#E4C079'}, D:{a:'#B79274',d:'#C7A488',g:'#C6A15A',gl:'#E4C079'}},
+    {id:'peacock', name:'Peacock & Gold',      L:{a:'#15635D',d:'#0E4A45',g:'#A9863F',gl:'#E4C079'}, D:{a:'#45A9A0',d:'#5FBBB2',g:'#C6A15A',gl:'#E4C079'}},
+    {id:'slate',   name:'Slate Blue & Copper', L:{a:'#33506B',d:'#243B50',g:'#B0703F',gl:'#E2A878'}, D:{a:'#7FA1BF',d:'#97B4CD',g:'#D0895A',gl:'#E2A878'}},
+    {id:'rust',    name:'Rust & Bronze',       L:{a:'#9E4A2C',d:'#7C3820',g:'#927338',gl:'#D9B57E'}, D:{a:'#D07E5C',d:'#DB9576',g:'#C1A05A',gl:'#D9B57E'}}
+  ];
+  function hexA(h,al){h=h.replace('#','');return'rgba('+parseInt(h.substr(0,2),16)+','+parseInt(h.substr(2,2),16)+','+parseInt(h.substr(4,2),16)+','+al+')';}
+  function mode(){var t=root.getAttribute('data-theme');if(t==='dark')return'D';if(t==='light')return'L';return matchMedia('(prefers-color-scheme:dark)').matches?'D':'L';}
+  var curPal;
+  try{curPal=localStorage.getItem('sc-pal');}catch(e){}
+  if(!curPal||!PAL.some(function(p){return p.id===curPal;}))curPal=PAL[0].id;
+  try{var st=localStorage.getItem('sc-theme');if(st)root.setAttribute('data-theme',st);}catch(e){}
+  function apply(){
+    var p=PAL.filter(function(x){return x.id===curPal;})[0]||PAL[0], c=p[mode()], s=root.style;
+    s.setProperty('--accent',c.a);s.setProperty('--accent-deep',c.d);
+    s.setProperty('--accent-tint',hexA(c.a,.10));s.setProperty('--brass',c.g);s.setProperty('--brass-lt',c.gl);
+    if(host)[].slice.call(host.children).forEach(function(b){b.classList.toggle('active',b.getAttribute('data-pal')===curPal);});
+  }
+  if(host)PAL.forEach(function(p){
+    var b=document.createElement('button');b.className='swatch';b.type='button';
+    b.setAttribute('data-pal',p.id);b.setAttribute('aria-label',p.name);b.title=p.name;
+    b.style.setProperty('--sw-a',p.L.a);b.style.setProperty('--sw-g',p.L.g);
+    b.addEventListener('click',function(){curPal=p.id;try{localStorage.setItem('sc-pal',curPal);}catch(e){}apply();});
+    host.appendChild(b);
+  });
+  if(btn)btn.addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme');
     var next=cur==='dark'?'light':cur==='light'?'dark':(matchMedia('(prefers-color-scheme:dark)').matches?'light':'dark');
-    root.setAttribute('data-theme',next);try{localStorage.setItem('sc-theme',next);}catch(e){}});})();
+    root.setAttribute('data-theme',next);try{localStorage.setItem('sc-theme',next);}catch(e){}apply();});
+  try{matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(){if(!root.getAttribute('data-theme'))apply();});}catch(e){}
+  apply();
+})();
 
 /* reveal */
 (function(){var reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
